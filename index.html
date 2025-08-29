@@ -1,240 +1,186 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>공유 플레이리스트</title>
+  <meta charset="UTF-8">
+  <title>음악 재생목록 공유</title>
   <style>
-    :root{
-      --bg:#0f1724;--card:#0b1220;--accent:#7c3aed;--muted:#9aa4b2;--glass:rgba(255,255,255,0.03);
-      --text:#e6eef6;
+    body{
+      font-family:sans-serif;
+      margin:0;
+      padding:0;
+      background:#f5f5f5;
+      color:#222;
+      transition:background .3s,color .3s;
     }
-    body.light {
-      --bg:#f4f6fb;--card:#ffffff;--accent:#7c3aed;--muted:#444;--glass:rgba(0,0,0,0.03);
-      --text:#111;
+    header{
+      background:#6200ea;
+      color:#fff;
+      padding:12px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
     }
-    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial}
-    body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);transition:background 0.3s,color 0.3s}
-    header{padding:18px 24px;display:flex;align-items:center;gap:16px;justify-content:space-between}
-    h1{margin:0;font-size:18px}
-    .container{max-width:1100px;margin:18px auto;padding:18px}
-    .layout{display:grid;grid-template-columns:320px 1fr;gap:18px}
-    .card{background:var(--card);padding:14px;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,0.2);transition:background 0.3s}
-    .small{font-size:13px;color:var(--muted)}
-    .auth{display:flex;flex-direction:column;gap:8px}
-    .auth input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.1);background:transparent;color:inherit}
-    .btn{display:inline-block;padding:8px 12px;border-radius:10px;border:none;background:var(--accent);color:white;cursor:pointer}
-    .btn.ghost{background:transparent;border:1px solid var(--muted);color:var(--text)}
-    .submit-group{display:flex;gap:8px;align-items:center}
-    textarea{width:100%;min-height:64px;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(0,0,0,0.1);color:inherit}
-    .feed{display:flex;flex-direction:column;gap:12px}
-    .post{display:flex;gap:12px;padding:12px;border-radius:12px;background:var(--glass);align-items:flex-start}
-    .meta{min-width:120px}
-    .title{font-weight:600}
-    .desc{font-size:13px;color:var(--muted)}
-    .actions{display:flex;gap:8px;align-items:center;margin-top:8px}
-    .like,.dislike{padding:6px 8px;border-radius:8px;background:var(--glass);cursor:pointer;border:none}
-    .counts{font-size:13px;color:var(--muted);margin-left:6px}
-    .comment-box{margin-top:8px}
-    .comment-list{margin-top:8px;display:flex;flex-direction:column;gap:6px}
-    .comment{padding:8px;border-radius:8px;background:rgba(255,255,255,0.05)}
-    .reply-box{margin-top:6px;margin-left:20px}
-    .best-list{display:flex;flex-direction:column;gap:8px}
-    .best-item{display:flex;justify-content:space-between;padding:8px;border-radius:8px;background:var(--glass)}
-    footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
-    @media (max-width:900px){.layout{grid-template-columns:1fr}.meta{min-width:unset}}
+    header h1{margin:0;font-size:20px;}
+    .theme-toggle{cursor:pointer;}
+    main{padding:20px;max-width:800px;margin:auto;}
+    .card{
+      background:#fff;
+      border-radius:12px;
+      padding:16px;
+      margin-bottom:20px;
+      box-shadow:0 2px 5px rgba(0,0,0,0.1);
+      transition:background .3s,color .3s;
+    }
+    .dark body{background:#111;color:#eee;}
+    .dark .card{background:#222;color:#eee;}
+    .hidden{display:none;}
+    .comment-box, .reply-box{
+      margin-top:8px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .comment-box input,.reply-box input{
+      width:100%;
+      padding:6px;
+      border-radius:8px;
+      border:1px solid rgba(0,0,0,0.2);
+      background:transparent;
+      color:inherit;
+    }
+    .comment-box button,.reply-box button{
+      align-self:flex-end;
+      padding:6px 12px;
+      border:none;
+      border-radius:6px;
+      background:#6200ea;
+      color:#fff;
+      cursor:pointer;
+    }
+    .reply{margin-left:20px;margin-top:6px;}
+    .delete-btn{
+      background:#e53935;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;float:right;
+    }
   </style>
 </head>
 <body>
   <header>
-    <div style="display:flex;align-items:center;gap:16px">
-      <h1>공유 플레이리스트</h1>
-      <div class="small">Spotify / YouTube / SoundCloud / Apple Music 지원</div>
+    <h1>음악 재생목록 공유</h1>
+    <div>
+      <button id="themeToggle" class="theme-toggle">🌙</button>
+      <button id="logoutBtn" class="hidden">로그아웃</button>
     </div>
-    <button id="theme-toggle" class="btn ghost">🌙/☀️</button>
   </header>
-
-  <div class="container">
-    <div class="layout">
-      <aside>
-        <div class="card"><div id="user-panel"></div></div>
-        <div style="height:12px"></div>
-        <div class="card">
-          <div style="font-weight:700;margin-bottom:8px">실시간 베스트</div>
-          <div id="best" class="best-list small"></div>
-        </div>
-      </aside>
-
-      <main>
-        <div class="card">
-          <div style="font-weight:700;margin-bottom:8px">플레이리스트 올리기</div>
-          <div class="small">허용되는 URL: Spotify/YouTube/SoundCloud/Apple Music</div>
-          <div style="height:8px"></div>
-          <div id="submit-area"></div>
-        </div>
-        <div style="height:12px"></div>
-        <div class="card">
-          <div style="font-weight:700;margin-bottom:8px">전체 공유 목록</div>
-          <div id="feed" class="feed"></div>
-        </div>
-      </main>
+  <main>
+    <!-- 로그인 / 회원가입 -->
+    <div id="authBox" class="card">
+      <h2>로그인 / 회원가입</h2>
+      <input id="username" placeholder="아이디">
+      <input id="password" type="password" placeholder="비밀번호">
+      <button id="loginBtn">로그인</button>
+      <button id="signupBtn">회원가입</button>
     </div>
-    <footer>⚠️ 이 서비스는 <b>데모</b>입니다. 데이터는 브라우저 localStorage에만 저장됩니다.</footer>
-  </div>
+
+    <!-- 업로드 -->
+    <div id="uploadBox" class="card hidden">
+      <h2>재생목록 올리기</h2>
+      <input id="plTitle" placeholder="제목">
+      <input id="plLink" placeholder="재생목록 링크">
+      <textarea id="plDesc" placeholder="설명" style="width:100%;margin-top:8px;"></textarea>
+      <button id="uploadBtn">올리기</button>
+    </div>
+
+    <!-- 베스트 -->
+    <div id="bestBox" class="card hidden">
+      <h2>실시간 베스트</h2>
+      <ul id="bestList"></ul>
+    </div>
+
+    <!-- 게시물 리스트 -->
+    <div id="feed"></div>
+  </main>
 
 <script>
-const PROVIDER_PATTERNS = [
-  {name:'YouTube', pattern:/(?:youtube\.com\/playlist\?list=|youtu\.be\/).*?/i},
-  {name:'Spotify', pattern:/(?:open\.spotify\.com\/playlist\/|spotify:playlist:)/i},
-  {name:'SoundCloud', pattern:/soundcloud\.com\/.+\/sets\//i},
-  {name:'AppleMusic', pattern:/music\.apple\.com\/.+\/playlist\//i}
-];
-function storage(key,v){if(v===undefined)return JSON.parse(localStorage.getItem(key)||'null');localStorage.setItem(key,JSON.stringify(v));}
-if(!storage('ps_users'))storage('ps_users',{});
-if(!storage('ps_posts'))storage('ps_posts',[]);
-let STATE={user:null};
-function escapeHtml(str){return str.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));}
-function escapeAttr(str){return str.replace(/"/g,'&quot;');}
+const state={user:null,playlists:[]};
 
-function renderUserPanel(){
-  const el=document.getElementById('user-panel');el.innerHTML='';
-  if(STATE.user){
-    el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${escapeHtml(STATE.user)}</strong><div class="small">로그인 상태</div></div><button id="logout" class="btn ghost">로그아웃</button></div>`;
-    document.getElementById('logout').onclick=()=>{STATE.user=null;localStorage.removeItem('ps_session');renderUserPanel();renderSubmitArea();};
-  }else{
-    el.innerHTML=`<div class="auth">
-      <input id="auth-user" placeholder="아이디" />
-      <input id="auth-pass" placeholder="비밀번호" type="password"/>
-      <div style="display:flex;gap:8px"><button id="login" class="btn">로그인</button><button id="signup" class="btn ghost">회원가입</button></div>
-      <div class="small">(데모) 비밀번호는 암호화 없이 저장됩니다.</div>
+// GitHub 저장소 설정 (샘플)
+const GITHUB_USER="YOUR_GITHUB_USERNAME";
+const GITHUB_REPO="YOUR_REPO";
+const GITHUB_FILE="playlist-data.json";
+const GITHUB_TOKEN="YOUR_PERSONAL_ACCESS_TOKEN"; // 실제 사용시 노출 금지
+
+async function loadData(){
+  try{
+    const res=await fetch(`https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${GITHUB_FILE}`);
+    if(res.ok){state.playlists=await res.json();render();}
+  }catch(e){console.log(e);}
+}
+
+async function saveData(){
+  // GitHub API로 JSON push (보안상 서버less 함수로 중계하는 게 권장)
+  const getRes=await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`,{
+    headers:{Authorization:`token ${GITHUB_TOKEN}`}
+  });
+  const fileInfo=await getRes.json();
+  const content=btoa(unescape(encodeURIComponent(JSON.stringify(state.playlists,null,2))));
+  await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`,{
+    method:"PUT",
+    headers:{"Content-Type":"application/json",Authorization:`token ${GITHUB_TOKEN}`},
+    body:JSON.stringify({message:"update playlists",content:content,sha:fileInfo.sha})
+  });
+}
+
+function render(){
+  document.getElementById("feed").innerHTML="";
+  state.playlists.forEach((pl,i)=>{
+    const card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`<h3>${pl.title}<button class='delete-btn' data-i='${i}'>삭제</button></h3>
+    <a href='${pl.link}' target='_blank'>링크</a><p>${pl.desc||""}</p>
+    <div>👍 ${pl.likes||0} 👎 ${pl.dislikes||0}</div>
+    <div class='comment-list'></div>
+    <div class='comment-box'>
+      <input placeholder='댓글 작성'>
+      <button>댓글 달기</button>
     </div>`;
-    document.getElementById('signup').onclick=signup;
-    document.getElementById('login').onclick=login;
-  }
+    document.getElementById("feed").appendChild(card);
+  });
 }
-function signup(){
-  const u=document.getElementById('auth-user').value.trim();
-  const p=document.getElementById('auth-pass').value;
-  if(!u||!p){alert('아이디/비밀번호 입력');return}
-  const users=storage('ps_users')||{};
-  if(users[u]){alert('이미 존재하는 아이디');return}
-  users[u]={password:btoa(p)};storage('ps_users',users);
-  alert('회원가입 완료. 로그인하세요.');
-}
-function login(){
-  const u=document.getElementById('auth-user').value.trim();
-  const p=document.getElementById('auth-pass').value;
-  const users=storage('ps_users')||{};
-  if(!users[u]||users[u].password!==btoa(p)){alert('아이디/비밀번호 오류');return}
-  STATE.user=u;localStorage.setItem('ps_session',u);
-  renderUserPanel();renderSubmitArea();renderFeed();
-}
-if(localStorage.getItem('ps_session'))STATE.user=localStorage.getItem('ps_session');
-renderUserPanel();
 
-function renderSubmitArea(){
-  const area=document.getElementById('submit-area');
-  if(!STATE.user){area.innerHTML='<div class="small">업로드하려면 로그인하세요.</div>';return}
-  area.innerHTML=`<input id="title" placeholder="제목" /><div style="height:8px"></div>
-  <input id="link" placeholder="링크" /><div style="height:8px"></div>
-  <textarea id="description" placeholder="설명"></textarea><div style="height:8px"></div>
-  <div class="submit-group"><button id="post-btn" class="btn">업로드</button><div class="small" id="post-msg"></div></div>`;
-  document.getElementById('post-btn').onclick=handlePost;
-}
-renderSubmitArea();
+// 로그인/회원가입
+const authBox=document.getElementById("authBox");
+const uploadBox=document.getElementById("uploadBox");
+const bestBox=document.getElementById("bestBox");
+const logoutBtn=document.getElementById("logoutBtn");
 
-function detectProvider(url){try{for(const p of PROVIDER_PATTERNS){if(p.pattern.test(url))return p.name}}catch(e){}return null;}
-function handlePost(){
-  const title=document.getElementById('title').value.trim();
-  const link=document.getElementById('link').value.trim();
-  const desc=document.getElementById('description').value.trim();
-  const msg=document.getElementById('post-msg');msg.textContent='';
-  if(!title||!link){msg.textContent='제목/링크 필요';return}
-  const provider=detectProvider(link);if(!provider){msg.textContent='허용되지 않은 링크';return}
-  const posts=storage('ps_posts')||[];
-  const id='p_'+Date.now();
-  posts.unshift({id,title,link,desc,provider,owner:STATE.user,likes:0,dislikes:0,comments:[]});
-  storage('ps_posts',posts);
-  document.getElementById('title').value='';document.getElementById('link').value='';document.getElementById('description').value='';
-  msg.textContent='업로드 완료';renderFeed();renderBest();
-}
-function toggleLike(id,isLike){
-  const posts=storage('ps_posts')||[];const p=posts.find(x=>x.id===id);if(!p)return;
-  if(isLike)p.likes++;else p.dislikes++;
-  storage('ps_posts',posts);renderFeed();renderBest();
-}
-function addComment(pid,text){
-  if(!STATE.user){alert('로그인 필요');return}
-  if(!text.trim())return;
-  const posts=storage('ps_posts')||[];const p=posts.find(x=>x.id===pid);if(!p)return;
-  p.comments.push({user:STATE.user,text,replies:[]});
-  storage('ps_posts',posts);renderFeed();
-}
-function addReply(pid,cidx,text){
-  if(!STATE.user){alert('로그인 필요');return}
-  if(!text.trim())return;
-  const posts=storage('ps_posts')||[];const p=posts.find(x=>x.id===pid);if(!p)return;
-  p.comments[cidx].replies.push({user:STATE.user,text});
-  storage('ps_posts',posts);renderFeed();
-}
-function deletePost(id){
-  const posts=storage('ps_posts')||[];
-  const idx=posts.findIndex(x=>x.id===id);
-  if(idx>-1 && posts[idx].owner===STATE.user){
-    if(confirm('삭제할까요?')){posts.splice(idx,1);storage('ps_posts',posts);renderFeed();renderBest();}
-  }
-}
-function renderFeed(){
-  const feed=document.getElementById('feed');feed.innerHTML='';
-  const posts=storage('ps_posts')||[];
-  if(posts.length===0){feed.innerHTML='<div class=small>아직 공유 없음</div>';return}
-  for(const post of posts){
-    const node=document.createElement('div');node.className='post';
-    const meta=document.createElement('div');meta.className='meta';
-    meta.innerHTML=`<div class=title>${escapeHtml(post.title)}</div><div class=small>by ${escapeHtml(post.owner)} · ${escapeHtml(post.provider)}</div>`;
-    const body=document.createElement('div');body.style.flex='1';
-    body.innerHTML=`<a href="${escapeAttr(post.link)}" target=_blank>${escapeHtml(post.link)}</a>`;
-    if(post.desc){body.innerHTML+=`<div class=small>${escapeHtml(post.desc)}</div>`}
-    const actions=document.createElement('div');actions.className='actions';
-    const like=document.createElement('button');like.className='like';like.textContent='👍';like.onclick=()=>toggleLike(post.id,true);
-    const dislike=document.createElement('button');dislike.className='dislike';dislike.textContent='👎';dislike.onclick=()=>toggleLike(post.id,false);
-    const counts=document.createElement('div');counts.className='counts';counts.textContent=`${post.likes}/${post.dislikes}`;
-    actions.append(like,dislike,counts);
-    if(STATE.user===post.owner){const del=document.createElement('button');del.className='btn ghost';del.textContent='삭제';del.onclick=()=>deletePost(post.id);actions.append(del);}
-    const commentBox=document.createElement('div');commentBox.className='comment-box';
-    const ci=document.createElement('input');ci.placeholder='댓글 달기...';ci.style.width='70%';
-    const cb=document.createElement('button');cb.className='btn ghost';cb.textContent='댓글';cb.onclick=()=>{addComment(post.id,ci.value);ci.value=''};
-    commentBox.append(ci,cb);
-    const cl=document.createElement('div');cl.className='comment-list';
-    post.comments.forEach((c,idx)=>{
-      const cnode=document.createElement('div');cnode.className='comment small';
-      cnode.innerHTML=`<strong>${escapeHtml(c.user)}</strong> ${escapeHtml(c.text)}`;
-      if(STATE.user){
-        const rb=document.createElement('div');rb.className='reply-box';
-        const ri=document.createElement('input');ri.placeholder='대댓글...';ri.style.width='70%';
-        const rbtn=document.createElement('button');rbtn.className='btn ghost';rbtn.textContent='↩';rbtn.onclick=()=>{addReply(post.id,idx,ri.value);ri.value=''};
-        rb.append(ri,rbtn);cnode.appendChild(rb);
-      }
-      if(c.replies){c.replies.forEach(r=>{const rn=document.createElement('div');rn.className='small';rn.style.marginLeft='20px';rn.innerHTML=`↳ <strong>${escapeHtml(r.user)}</strong> ${escapeHtml(r.text)}`;cnode.appendChild(rn);});}
-      cl.appendChild(cnode);
-    });
-    node.append(meta,body,actions,commentBox,cl);
-    feed.appendChild(node);
-  }
-}
-function renderBest(){
-  const best=document.getElementById('best');best.innerHTML='';
-  const posts=storage('ps_posts')||[];
-  posts.sort((a,b)=>(b.likes-b.dislikes)-(a.likes-a.dislikes));
-  posts.slice(0,5).forEach(p=>{const d=document.createElement('div');d.className='best-item';d.textContent=`${p.title} (${p.likes}👍)`;best.appendChild(d);});
-}
-renderFeed();renderBest();
+document.getElementById("signupBtn").onclick=()=>{
+  localStorage.setItem("user",document.getElementById("username").value);
+  state.user=document.getElementById("username").value;
+  authBox.classList.add("hidden");uploadBox.classList.remove("hidden");bestBox.classList.remove("hidden");logoutBtn.classList.remove("hidden");
+};
+
+document.getElementById("loginBtn").onclick=()=>{
+  state.user=document.getElementById("username").value;
+  authBox.classList.add("hidden");uploadBox.classList.remove("hidden");bestBox.classList.remove("hidden");logoutBtn.classList.remove("hidden");
+};
+
+logoutBtn.onclick=()=>{state.user=null;localStorage.removeItem("user");location.reload();}
+
+// 업로드
+ document.getElementById("uploadBtn").onclick=()=>{
+  const t=document.getElementById("plTitle").value;
+  const l=document.getElementById("plLink").value;
+  const d=document.getElementById("plDesc").value;
+  state.playlists.push({title:t,link:l,desc:d,author:state.user,likes:0,dislikes:0,comments:[]});
+  saveData();render();
+};
 
 // 테마 토글
-const themeBtn=document.getElementById('theme-toggle');
-function applyTheme(){document.body.classList.toggle('light',localStorage.getItem('theme')==='light');}
-themeBtn.onclick=()=>{const cur=localStorage.getItem('theme')==='light'?'dark':'light';localStorage.setItem('theme',cur);applyTheme();}
-applyTheme();
+document.getElementById("themeToggle").onclick=()=>{
+  document.body.classList.toggle("dark");
+};
+
+loadData();
 </script>
 </body>
 </html>
