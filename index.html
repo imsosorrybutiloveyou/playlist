@@ -28,17 +28,22 @@
     .submit-group{display:flex;gap:8px;align-items:center}
     textarea{width:100%;min-height:64px;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(0,0,0,0.1);color:inherit}
     .feed{display:flex;flex-direction:column;gap:12px}
-    .post{display:flex;gap:12px;padding:12px;border-radius:12px;background:var(--glass);align-items:flex-start}
+    .post{padding:12px;border-radius:12px;background:var(--glass)}
+    .post-header{display:flex;gap:12px;align-items:flex-start;margin-bottom:8px}
     .meta{min-width:120px}
+    .post-content{flex:1}
     .title{font-weight:600}
     .desc{font-size:13px;color:var(--muted)}
     .actions{display:flex;gap:8px;align-items:center;margin-top:8px}
     .like,.dislike{padding:6px 8px;border-radius:8px;background:var(--glass);cursor:pointer;border:none}
     .counts{font-size:13px;color:var(--muted);margin-left:6px}
-    .comment-box{margin-top:8px}
-    .comment-list{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+    .comment-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--glass)}
+    .comment-box{margin-bottom:8px}
+    .comment-box input{width:70%;margin-right:8px}
+    .comment-list{display:flex;flex-direction:column;gap:6px}
     .comment{padding:8px;border-radius:8px;background:rgba(255,255,255,0.05)}
     .reply-box{margin-top:6px;margin-left:20px}
+    .reply-box input{width:70%;margin-right:8px}
     .best-list{display:flex;flex-direction:column;gap:8px}
     .best-item{display:flex;justify-content:space-between;padding:8px;border-radius:8px;background:var(--glass)}
     footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
@@ -153,14 +158,42 @@ function handlePost(){
   const provider=detectProvider(link);if(!provider){msg.textContent='허용되지 않은 링크';return}
   const posts=storage('ps_posts')||[];
   const id='p_'+Date.now();
-  posts.unshift({id,title,link,desc,provider,owner:STATE.user,likes:0,dislikes:0,comments:[]});
+  posts.unshift({id,title,link,desc,provider,owner:STATE.user,likes:0,dislikes:0,comments:[],votes:{}});
   storage('ps_posts',posts);
   document.getElementById('title').value='';document.getElementById('link').value='';document.getElementById('description').value='';
   msg.textContent='업로드 완료';renderFeed();renderBest();
 }
 function toggleLike(id,isLike){
+  if(!STATE.user){alert('로그인 필요');return;}
   const posts=storage('ps_posts')||[];const p=posts.find(x=>x.id===id);if(!p)return;
-  if(isLike)p.likes++;else p.dislikes++;
+  
+  // 사용자별 투표 기록 초기화
+  if(!p.votes)p.votes={};
+  
+  const currentVote=p.votes[STATE.user]; // 'like', 'dislike', 또는 undefined
+  
+  if(currentVote===undefined){
+    // 처음 투표하는 경우
+    if(isLike){p.likes++;p.votes[STATE.user]='like';}
+    else{p.dislikes++;p.votes[STATE.user]='dislike';}
+  }else if(currentVote==='like'){
+    if(isLike){
+      // 좋아요 취소
+      p.likes--;delete p.votes[STATE.user];
+    }else{
+      // 좋아요→싫어요 변경
+      p.likes--;p.dislikes++;p.votes[STATE.user]='dislike';
+    }
+  }else if(currentVote==='dislike'){
+    if(!isLike){
+      // 싫어요 취소
+      p.dislikes--;delete p.votes[STATE.user];
+    }else{
+      // 싫어요→좋아요 변경
+      p.dislikes--;p.likes++;p.votes[STATE.user]='like';
+    }
+  }
+  
   storage('ps_posts',posts);renderFeed();renderBest();
 }
 function addComment(pid,text){
@@ -178,10 +211,39 @@ function addReply(pid,cidx,text){
   storage('ps_posts',posts);renderFeed();
 }
 function deletePost(id){
+  console.log('deletePost 호출됨, id:', id, 'user:', STATE.user);
+  if(!STATE.user){alert('로그인 필요');return;}
   const posts=storage('ps_posts')||[];
-  const idx=posts.findIndex(x=>x.id===id);
-  if(idx>-1 && posts[idx].owner===STATE.user){
-    if(confirm('삭제할까요?')){posts.splice(idx,1);storage('ps_posts',posts);renderFeed();renderBest();}
+  console.log('전체 게시물:', posts.length, '개');
+  const postIndex=posts.findIndex(x=>x.id===id);
+  console.log('게시물 인덱스:', postIndex);
+  if(postIndex===-1){alert('게시물을 찾을 수 없습니다.');return;}
+  const post=posts[postIndex];
+  console.log('게시물 상세:', {
+    id: post.id,
+    title: post.title,
+    owner: post.owner,
+    ownerType: typeof post.owner
+  });
+  console.log('현재 사용자:', STATE.user, 'type:', typeof STATE.user);
+  console.log('소유자 비교:', post.owner, '===', STATE.user, '결과:', post.owner===STATE.user);
+  
+  if(post.owner!==STATE.user){
+    alert('자신의 게시물만 삭제할 수 있습니다. 소유자:'+post.owner+', 현재사용자:'+STATE.user);
+    return;
+  }
+  
+  console.log('소유자 확인 통과, confirm 대화상자 표시');
+  if(confirm(`"${post.title}" 게시물을 삭제하시겠습니까?`)){
+    console.log('사용자가 삭제 확인함');
+    posts.splice(postIndex,1);
+    storage('ps_posts',posts);
+    console.log('삭제 후 게시물 수:', posts.length);
+    renderFeed();
+    renderBest();
+    alert('게시물이 삭제되었습니다.');
+  } else {
+    console.log('사용자가 삭제 취소함');
   }
 }
 function renderFeed(){
@@ -190,35 +252,77 @@ function renderFeed(){
   if(posts.length===0){feed.innerHTML='<div class=small>아직 공유 없음</div>';return}
   for(const post of posts){
     const node=document.createElement('div');node.className='post';
+    
+    // 상단 헤더 (제목, 작성자 정보, 좋아요/싫어요)
+    const header=document.createElement('div');header.className='post-header';
     const meta=document.createElement('div');meta.className='meta';
     meta.innerHTML=`<div class=title>${escapeHtml(post.title)}</div><div class=small>by ${escapeHtml(post.owner)} · ${escapeHtml(post.provider)}</div>`;
-    const body=document.createElement('div');body.style.flex='1';
-    body.innerHTML=`<a href="${escapeAttr(post.link)}" target=_blank>${escapeHtml(post.link)}</a>`;
-    if(post.desc){body.innerHTML+=`<div class=small>${escapeHtml(post.desc)}</div>`}
+    
+    const content=document.createElement('div');content.className='post-content';
+    content.innerHTML=`<a href="${escapeAttr(post.link)}" target=_blank>${escapeHtml(post.link)}</a>`;
+    if(post.desc){content.innerHTML+=`<div class=small style="margin-top:4px">${escapeHtml(post.desc)}</div>`}
+    
     const actions=document.createElement('div');actions.className='actions';
-    const like=document.createElement('button');like.className='like';like.textContent='👍';like.onclick=()=>toggleLike(post.id,true);
-    const dislike=document.createElement('button');dislike.className='dislike';dislike.textContent='👎';dislike.onclick=()=>toggleLike(post.id,false);
+    const like=document.createElement('button');like.className='like';
+    const dislike=document.createElement('button');dislike.className='dislike';
+    
+    // 현재 사용자의 투표 상태 확인
+    const userVote=STATE.user&&post.votes?post.votes[STATE.user]:null;
+    
+    // 좋아요 버튼 설정
+    like.textContent=userVote==='like'?'👍✓':'👍';
+    like.style.background=userVote==='like'?'var(--accent)':'var(--glass)';
+    like.onclick=()=>toggleLike(post.id,true);
+    
+    // 싫어요 버튼 설정  
+    dislike.textContent=userVote==='dislike'?'👎✓':'👎';
+    dislike.style.background=userVote==='dislike'?'#dc2626':'var(--glass)';
+    dislike.onclick=()=>toggleLike(post.id,false);
+    
     const counts=document.createElement('div');counts.className='counts';counts.textContent=`${post.likes}/${post.dislikes}`;
     actions.append(like,dislike,counts);
-    if(STATE.user===post.owner){const del=document.createElement('button');del.className='btn ghost';del.textContent='삭제';del.onclick=()=>deletePost(post.id);actions.append(del);}
+    
+    // 삭제 버튼 (자신의 게시물인 경우에만)
+    if(STATE.user===post.owner){
+      console.log('삭제 버튼 생성 중, 게시물 ID:', post.id, '소유자:', post.owner);
+      const del=document.createElement('button');
+      del.className='btn ghost';
+      del.textContent='삭제';
+      del.style.marginLeft='8px';
+      del.onclick=function(){
+        console.log('삭제 버튼 클릭됨');
+        deletePost(post.id);
+      };
+      actions.append(del);
+    }
+    
+    content.appendChild(actions);
+    header.append(meta,content);
+    
+    // 댓글 섹션 (별도 섹션으로 분리)
+    const commentSection=document.createElement('div');commentSection.className='comment-section';
+    
     const commentBox=document.createElement('div');commentBox.className='comment-box';
-    const ci=document.createElement('input');ci.placeholder='댓글 달기...';ci.style.width='70%';
+    const ci=document.createElement('input');ci.placeholder='댓글 달기...';
     const cb=document.createElement('button');cb.className='btn ghost';cb.textContent='댓글';cb.onclick=()=>{addComment(post.id,ci.value);ci.value=''};
     commentBox.append(ci,cb);
+    
     const cl=document.createElement('div');cl.className='comment-list';
     post.comments.forEach((c,idx)=>{
       const cnode=document.createElement('div');cnode.className='comment small';
       cnode.innerHTML=`<strong>${escapeHtml(c.user)}</strong> ${escapeHtml(c.text)}`;
       if(STATE.user){
         const rb=document.createElement('div');rb.className='reply-box';
-        const ri=document.createElement('input');ri.placeholder='대댓글...';ri.style.width='70%';
+        const ri=document.createElement('input');ri.placeholder='대댓글...';
         const rbtn=document.createElement('button');rbtn.className='btn ghost';rbtn.textContent='↩';rbtn.onclick=()=>{addReply(post.id,idx,ri.value);ri.value=''};
         rb.append(ri,rbtn);cnode.appendChild(rb);
       }
       if(c.replies){c.replies.forEach(r=>{const rn=document.createElement('div');rn.className='small';rn.style.marginLeft='20px';rn.innerHTML=`↳ <strong>${escapeHtml(r.user)}</strong> ${escapeHtml(r.text)}`;cnode.appendChild(rn);});}
       cl.appendChild(cnode);
     });
-    node.append(meta,body,actions,commentBox,cl);
+    
+    commentSection.append(commentBox,cl);
+    node.append(header,commentSection);
     feed.appendChild(node);
   }
 }
